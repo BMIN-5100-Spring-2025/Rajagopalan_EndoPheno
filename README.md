@@ -1,7 +1,7 @@
-# BMIN 5100 Template Repository
-Template repository for BMIN 5100 Projects.
+# EndoPheno Project Repository
+Repository for EndoPheno, a rule-based classification system to aid in phenotyping endometriosis cases versus controls for large-scale genomic research. 
 
-Contains a minimal Python project that reads a CSV from an input directory and
+Contains a Python project that reads a CSV from an input directory and
 outputs a CSV to an output directory, suitable for an analysis workflow on Pennsieve.
 
 Use this template to create your own GitHub repository by clicking the green
@@ -21,7 +21,7 @@ pip3 install -r requirements.txt
 
 ### Running the application
 ```
-python3 main/app.py
+python3 app/main.py [--filename]
 ```
 
 ### Testing the application
