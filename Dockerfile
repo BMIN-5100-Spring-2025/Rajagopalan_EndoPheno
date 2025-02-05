@@ -1,5 +1,13 @@
 FROM python:3.12
 
+# # Install system dependencies
+# RUN apt-get update && apt-get install -y \
+#     gcc \
+#     libclips-dev \
+#     build-essential \
+#     python3-dev \
+#     && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /
 
 COPY requirements.txt /app/requirements.txt
