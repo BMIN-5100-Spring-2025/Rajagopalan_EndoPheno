@@ -1,2 +1,5 @@
 pytest
-clipspy
+clips
+pandas
+argparse
+sys
