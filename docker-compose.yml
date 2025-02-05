@@ -2,7 +2,7 @@ services:
   app:
     image: template:0.0.2
     build:
-      context:
+      context: .
       dockerfile: Dockerfile
     environment:
       - INPUT_DIR=/data/input
