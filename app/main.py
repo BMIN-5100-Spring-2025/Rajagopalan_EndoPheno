@@ -2,9 +2,8 @@ import clips
 import pandas as pd
 import sys
 sys.path.append('./src/')
-from clips_util import pull_facts, print_rules, print_templates, build_read_assert
-import argparse
-import csv
+import os
+import glob
 
 def count_symptoms(*args):
     count = 0
@@ -285,104 +284,109 @@ DEFRULE_ONLY_ENDOMETRIOSIS_EXCLUSION = """
 """
 env.build(DEFRULE_ONLY_ENDOMETRIOSIS_EXCLUSION)
 
-# simulated input data
-# data_file = './data/input/simulated_endopheno_data.csv'
+def run_endopheno(input_directory, output_directory):
+    csv_files = glob.glob(os.path.join(input_directory, '*.csv'), recursive=False)
 
-# parser to take in filename containing input data
-parser = argparse.ArgumentParser(
-                    prog='Endometriosis Phenotyping System (Rule-Based)',
-                    description='Takes in csv of input data and produces output file with classifications and explanations.')
-parser.add_argument('filename') # positional argument
-args = parser.parse_args()
+    # iterate through all input files, running endopheno system on each one and create one output file for every input
+    for input_file in csv_files:
+        filename = os.path.basename(input_file)
+        output_filename = 'classified_' + filename
+        output_file = os.path.join(output_directory, output_filename)
 
-data = pd.read_csv(args.filename, sep=',')
+        # reading in input data
+        data = pd.read_csv(filename, sep=',')
 
-# retrieve the fact templates
-patient_endo_template = env.find_template('patient_endo_symptoms')
-patient_concomitant_disease_template = env.find_template('patient_concomitant_disease_symptoms')
+        # retrieve the fact templates
+        patient_endo_template = env.find_template('patient_endo_symptoms')
+        patient_concomitant_disease_template = env.find_template('patient_concomitant_disease_symptoms')
 
-output_df_columns = ['classification', 'explanation']
-output_df = pd.DataFrame(columns=output_df_columns)
+        output_df_columns = ['classification', 'explanation']
+        output_df = pd.DataFrame(columns=output_df_columns)
 
-predicted_phenotype = []
-for index, row in data.iterrows():
-    # resetting knowledge base each time
-    env.reset()
+        predicted_phenotype = []
+        for index, row in data.iterrows():
+            # resetting knowledge base each time
+            env.reset()
 
-    # split into endo and concomitant disease dicts
-    endo_data = data.loc[index, ['endometriosis', 'abdominal_pelvic_pain', 'dysmenorrhea', 'pain_with_sex', 'dyschezia', 'dysuria', 'infertility', 'pelvic_perineal_pain', 'adenomyosis']]
-    additional_disease_data = data.loc[index, ['amenorrhea', 'constipation', 'diarrhea', 'flank_pain', 'hematuria', 'frequent_urination', 'ibs', 'interstitial_cystitis']]
+            # split into endo and concomitant disease dicts
+            endo_data = data.loc[index, ['endometriosis', 'abdominal_pelvic_pain', 'dysmenorrhea', 'pain_with_sex', 'dyschezia', 'dysuria', 'infertility', 'pelvic_perineal_pain', 'adenomyosis']]
+            additional_disease_data = data.loc[index, ['amenorrhea', 'constipation', 'diarrhea', 'flank_pain', 'hematuria', 'frequent_urination', 'ibs', 'interstitial_cystitis']]
 
-    # create dictionary from current row, populated only with the symptoms I need
-    endo_dict = endo_data.to_dict()
-    other_diseases_dict = additional_disease_data.to_dict()
+            # create dictionary from current row, populated only with the symptoms I need
+            endo_dict = endo_data.to_dict()
+            other_diseases_dict = additional_disease_data.to_dict()
 
-    # convert all the data into types as clips Symbol: 0 -> no, 1 -> yes, '' -> unknown
-    for key, value in endo_dict.items():
-        curr_value = value
-        if curr_value == 0:
-            endo_dict[key] = clips.Symbol('no')
-        elif curr_value == 1:
-            endo_dict[key] = clips.Symbol('yes')
-        elif curr_value == '':
-            endo_dict[key] = clips.Symbol('unknown')
-            # this doesn't seem to ever get used but leaving it in for robustness
+            # convert all the data into types as clips Symbol: 0 -> no, 1 -> yes, '' -> unknown
+            for key, value in endo_dict.items():
+                curr_value = value
+                if curr_value == 0:
+                    endo_dict[key] = clips.Symbol('no')
+                elif curr_value == 1:
+                    endo_dict[key] = clips.Symbol('yes')
+                elif curr_value == '':
+                    endo_dict[key] = clips.Symbol('unknown')
+                    # this doesn't seem to ever get used but leaving it in for robustness
 
-    for key, value in other_diseases_dict.items():
-        curr_value = value
-        if curr_value == 0:
-            other_diseases_dict[key] = clips.Symbol('no')
-        elif curr_value == 1:
-            other_diseases_dict[key] = clips.Symbol('yes')
-        elif curr_value == '':
-            other_diseases_dict[key] = clips.Symbol('unknown')
-            # this doesn't seem to ever get used but leaving it in for robustness
+            for key, value in other_diseases_dict.items():
+                curr_value = value
+                if curr_value == 0:
+                    other_diseases_dict[key] = clips.Symbol('no')
+                elif curr_value == 1:
+                    other_diseases_dict[key] = clips.Symbol('yes')
+                elif curr_value == '':
+                    other_diseases_dict[key] = clips.Symbol('unknown')
+                    # this doesn't seem to ever get used but leaving it in for robustness
 
-    # populate those into the templates using assert_fact
-    patient_endo_template.assert_fact(**endo_dict)
-    patient_concomitant_disease_template.assert_fact(**other_diseases_dict)
+            # populate those into the templates using assert_fact
+            patient_endo_template.assert_fact(**endo_dict)
+            patient_concomitant_disease_template.assert_fact(**other_diseases_dict)
 
-    env.run()
-    facts_present = pull_facts(env)
+            env.run()
 
-    for idx, fact in enumerate(env.facts()):
-        if idx == 0:
-            endo_pred = fact['meets_criteria']
-        elif idx == 1:
-            concomitant_pred = fact['meets_criteria']
+            for idx, fact in enumerate(env.facts()):
+                if idx == 0:
+                    endo_pred = fact['meets_criteria']
+                elif idx == 1:
+                    concomitant_pred = fact['meets_criteria']
 
-    results_data = data.loc[index, ['endometriosis', 'adenomyosis', 'ibs', 'interstitial_cystitis']]
+            # TABULATING ALL RESULTS
+            # ONLY END PRED (A) -> CASES (1)
+            classification = None
+            if endo_pred == clips.Symbol('yes') and concomitant_pred == clips.Symbol('no'):
+                # tabulate_actual_results('A')
+                classification = 1.0
+                explanation = pull_explanation('yes', 'no')
+                predicted_phenotype.append(1.0)
+            # BOTH ENDO CONCOMITANT PRED (C) -> CASES (1)
+            elif endo_pred == clips.Symbol('yes') and concomitant_pred == clips.Symbol('yes'):
+                # tabulate_actual_results('C')
+                classification = 1.0
+                explanation = pull_explanation('yes', 'yes')
+                predicted_phenotype.append(1.0)
+            # ONLY CONCOMITANT PRED (B) -> CONTROLS (0)
+            elif endo_pred == clips.Symbol('no') and concomitant_pred == clips.Symbol('yes'):
+                # tabulate_actual_results('B')
+                classification = 0.0
+                explanation = pull_explanation('no', 'yes')
+                predicted_phenotype.append(0.0)
+            # NEITHER PRED (D) -> CONTROLS (0)
+            elif endo_pred == clips.Symbol('no') and concomitant_pred == clips.Symbol('no'):
+                # tabulate_actual_results('D')
+                classification = 0.0
+                explanation = pull_explanation('no', 'no')
+                predicted_phenotype.append(0.0)
 
-    # ONLY END PRED (A) -> CASES (1)
-    classification = None
-    if endo_pred == clips.Symbol('yes') and concomitant_pred == clips.Symbol('no'):
-        # tabulate_actual_results('A')
-        classification = 1.0
-        explanation = pull_explanation('yes', 'no')
-        predicted_phenotype.append(1.0)
-    # BOTH ENDO CONCOMITANT PRED (C) -> CASES (1)
-    elif endo_pred == clips.Symbol('yes') and concomitant_pred == clips.Symbol('yes'):
-        # tabulate_actual_results('C')
-        classification = 1.0
-        explanation = pull_explanation('yes', 'yes')
-        predicted_phenotype.append(1.0)
-    # ONLY CONCOMITANT PRED (B) -> CONTROLS (0)
-    elif endo_pred == clips.Symbol('no') and concomitant_pred == clips.Symbol('yes'):
-        # tabulate_actual_results('B')
-        classification = 0.0
-        explanation = pull_explanation('no', 'yes')
-        predicted_phenotype.append(0.0)
-    # NEITHER PRED (D) -> CONTROLS (0)
-    elif endo_pred == clips.Symbol('no') and concomitant_pred == clips.Symbol('no'):
-        # tabulate_actual_results('D')
-        classification = 0.0
-        explanation = pull_explanation('no', 'no')
-        predicted_phenotype.append(0.0)
+            output_df = pd.concat([pd.DataFrame([[classification,explanation]], columns=output_df.columns), output_df], ignore_index=True)
 
-    output_df = pd.concat([pd.DataFrame([[classification,explanation]], columns=output_df.columns), output_df], ignore_index=True)
+        # writing output file with classifications to csv
+        output_df.to_csv(output_file, index=False)
 
 
-print(predicted_phenotype)
+# added for better readability while dockerizing application
+if __name__ == "__main__":
+    base_directory = os.path.dirname(os.path.dirname(__file__))
 
-filename = './data/output/classifications.csv'
-output_df.to_csv(filename, index=False)
+    input_directory = os.getenv('INPUT_DIR', os.path.join(base_directory, 'data/input/'))
+    output_directory = os.getenv('OUTPUT_DIR', os.path.join(base_directory, 'data/output/'))
+
+    run_endopheno(input_directory, output_directory)
