@@ -294,7 +294,7 @@ def run_endopheno(input_directory, output_directory):
         output_file = os.path.join(output_directory, output_filename)
 
         # reading in input data
-        data = pd.read_csv(filename, sep=',')
+        data = pd.read_csv(input_file, sep=',')
 
         # retrieve the fact templates
         patient_endo_template = env.find_template('patient_endo_symptoms')
