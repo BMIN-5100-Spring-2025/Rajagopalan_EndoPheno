@@ -1,4 +1,4 @@
-resource "aws_ecr_repository" "rajagopalan-endopheno_ecr_repository" {
+resource "aws_ecr_repository" "rajagopalan-endopheno" {
   name                 = "rajagopalan-endopheno"
   image_tag_mutability = "MUTABLE"
 
