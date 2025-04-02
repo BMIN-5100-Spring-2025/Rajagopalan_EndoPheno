@@ -6,25 +6,40 @@ import os
 import glob
 import boto3
 
+s3 = boto3.client("s3")
+
 def download_from_s3(bucket_name, s3_prefix, local_directory):
     """download files from S3 to a local directory"""
-    s3 = boto3.client('s3')
-    objects = s3.list_objects_v2(Bucket=bucket_name, Prefix=s3_prefix)
-    if 'Contents' in objects:
-        for obj in objects['Contents']:
-            file_key = obj['Key']
-            if not file_key.endswith('/'):  # Skip directories
-                local_file_path = os.path.join(local_directory, os.path.basename(file_key))
-                s3.download_file(bucket_name, file_key, local_file_path)
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=s3_prefix)
+    if "Contents" not in response:
+        return
+
+    for obj in response["Contents"]:
+        key = obj["Key"]
+        local_filename = os.path.join(input_directory, os.path.basename(key))
+        s3.download_file(bucket_name, key, local_filename)
+
+    # s3 = boto3.client('s3')
+    # objects = s3.list_objects_v2(Bucket=bucket_name, Prefix=s3_prefix)
+    # if 'Contents' in objects:
+    #     for obj in objects['Contents']:
+    #         file_key = obj['Key']
+    #         if not file_key.endswith('/'):  # Skip directories
+    #             local_file_path = os.path.join(local_directory, os.path.basename(file_key))
+    #             s3.download_file(bucket_name, file_key, local_file_path)
 
 def upload_to_s3(bucket_name, local_directory, s3_prefix):
     """upload files from a local directory to S3"""
-    s3 = boto3.client('s3')
-    for file_name in os.listdir(local_directory):
-        local_file_path = os.path.join(local_directory, file_name)
-        if os.path.isfile(local_file_path):
-            s3_key = os.path.join(s3_prefix, file_name)
-            s3.upload_file(local_file_path, bucket_name, s3_key)
+    for filename in os.listdir(local_directory):
+        local_path = os.path.join(local_directory, filename)
+        s3_key = f"{s3_prefix}{filename}"
+        s3.upload_file(local_path, bucket_name, s3_key)
+    # s3 = boto3.client('s3')
+    # for file_name in os.listdir(local_directory):
+    #     local_file_path = os.path.join(local_directory, file_name)
+    #     if os.path.isfile(local_file_path):
+    #         s3_key = os.path.join(s3_prefix, file_name)
+    #         s3.upload_file(local_file_path, bucket_name, s3_key)
 
 def count_symptoms(*args):
     count = 0
