@@ -8,8 +8,29 @@ resource "aws_iam_role" "ecs_task_execution_role" {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          Service = "ec2.amazonaws.com"
+          Service = "ecs-tasks.amazonaws.com"
         }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_execution_role_custom_policy" {
+  name = "ecs_task_execution_role_custom_policy"
+  role = aws_iam_role.ecs_task_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:AttachNetworkInterface",
+          "ec2:DetachNetworkInterface",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -30,7 +51,7 @@ resource "aws_iam_role" "ecs_task_role" {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          Service = "ec2.amazonaws.com"
+          Service = "ecs-tasks.amazonaws.com"
         }
       }
     ]
@@ -60,22 +81,33 @@ resource "aws_ecs_task_definition" "rajagopalan-endopheno" {
   family                   = "rajagopalan-endopheno"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "128"
-  memory                   = "256"
+  cpu                      = "256"
+  memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
       name      = "rajagopalan-endopheno"
-      image     = "endo_pheno:v1"
+      image     = "${aws_ecr_repository.rajagopalan-endopheno.repository_url}:v3"
       essential = true
       environment = [
         {
           name  = "S3_BUCKET_ARN"
           value = "arn:aws:s3:::rajagopalan-endopheno"
+        },
+        { name = "ENVIRONMENT"
+          value = "FARGATE"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/my_task"
+          "awslogs-region"        = "us-west-2"
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 

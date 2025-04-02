@@ -4,6 +4,27 @@ import sys
 sys.path.append('./src/')
 import os
 import glob
+import boto3
+
+def download_from_s3(bucket_name, s3_prefix, local_directory):
+    """download files from S3 to a local directory"""
+    s3 = boto3.client('s3')
+    objects = s3.list_objects_v2(Bucket=bucket_name, Prefix=s3_prefix)
+    if 'Contents' in objects:
+        for obj in objects['Contents']:
+            file_key = obj['Key']
+            if not file_key.endswith('/'):  # Skip directories
+                local_file_path = os.path.join(local_directory, os.path.basename(file_key))
+                s3.download_file(bucket_name, file_key, local_file_path)
+
+def upload_to_s3(bucket_name, local_directory, s3_prefix):
+    """upload files from a local directory to S3"""
+    s3 = boto3.client('s3')
+    for file_name in os.listdir(local_directory):
+        local_file_path = os.path.join(local_directory, file_name)
+        if os.path.isfile(local_file_path):
+            s3_key = os.path.join(s3_prefix, file_name)
+            s3.upload_file(local_file_path, bucket_name, s3_key)
 
 def count_symptoms(*args):
     count = 0
@@ -389,4 +410,21 @@ if __name__ == "__main__":
     input_directory = os.getenv('INPUT_DIR', os.path.join(base_directory, 'data/input/'))
     output_directory = os.getenv('OUTPUT_DIR', os.path.join(base_directory, 'data/output/'))
 
-    run_endopheno(input_directory, output_directory)
+    os.makedirs(input_directory, exist_ok=True)
+    os.makedirs(output_directory, exist_ok=True)
+
+    environment = os.getenv('ENVIRONMENT', 'LOCAL').upper()
+
+    if environment == 'FARGATE':
+        s3_bucket = os.getenv('S3_BUCKET_ARN')
+
+        s3_input_prefix = os.getenv('S3_INPUT_PREFIX', 'input/')
+        s3_output_prefix = os.getenv('S3_OUTPUT_PREFIX', 'output/')
+
+        # s3.download_file(s3_bucket, 'input/input_data.csv', os.path.join(input_directory, 'input_data.csv'))
+        download_from_s3(s3_bucket, s3_input_prefix, input_directory)
+        run_endopheno(input_directory, output_directory)
+        upload_to_s3(s3_bucket, output_directory, s3_output_prefix)
+
+    elif environment == 'LOCAL':
+        run_endopheno(input_directory, output_directory)
