@@ -77,6 +77,11 @@ resource "aws_iam_role_policy" "ecs_task_role_policy" {
   })
 }
 
+resource "aws_endopheno_log_group" "endopheno_ecs_log_group" {
+  name              = "/ecs/rajagopalan-endopheno"
+  retention_in_days = 30  # Optional: Set log retention
+}
+
 resource "aws_ecs_task_definition" "rajagopalan-endopheno" {
   family                   = "rajagopalan-endopheno"
   network_mode             = "awsvpc"
@@ -103,11 +108,10 @@ resource "aws_ecs_task_definition" "rajagopalan-endopheno" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/my_task"
-          "awslogs-region"        = "us-west-2"
-          "awslogs-stream-prefix" = "ecs"
+          awslogs-group         = aws_cloudwatch_log_group.endopheno_ecs_log_group.name
+          awslogs-region        = data.aws_region.current_region.name
+          awslogs-stream-prefix = "ecs"
         }
-      }
     }
   ])
 
