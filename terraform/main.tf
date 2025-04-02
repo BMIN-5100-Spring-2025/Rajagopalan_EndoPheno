@@ -6,6 +6,33 @@ resource "aws_s3_bucket" "rajagopalan-endopheno" {
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "endopheno_data_ownership_controls" {
+  bucket = aws_s3_bucket.rajagopalan-endopheno.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_acl" "endopheno_data_acl" {
+  depends_on = [aws_s3_bucket_ownership_controls.endopheno_data_ownership_controls]
+
+  bucket = aws_s3_bucket.rajagopalan-endopheno.id
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "endopheno_data_expiration" {
+  bucket = aws_s3_bucket.rajagopalan-endopheno.id
+
+  rule {
+    id      = "compliance-retention-policy"
+    status  = "Enabled"
+
+    expiration {
+	  days = 100
+    }
+  }
+}
+
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecs_task_execution_role"
 
@@ -74,11 +101,18 @@ resource "aws_iam_role_policy" "ecs_task_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject"
-        ]
         Effect = "Allow"
+        Action = [
+          "s3:ListBucket"  # Allow listing objects in the bucket
+        ]
+        Resource = "arn:aws:s3:::rajagopalan-endopheno"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",  # Allow reading objects
+          "s3:PutObject"   # Allow writing objects
+        ]
         Resource = "arn:aws:s3:::rajagopalan-endopheno/*"
       }
     ]
@@ -107,7 +141,7 @@ resource "aws_ecs_task_definition" "rajagopalan-endopheno" {
       environment = [
         {
           name  = "S3_BUCKET_ARN"
-          value = "${aws_s3_bucket.rajagopalan-endopheno.id}"
+          value = "${aws_s3_bucket.rajagopalan-endopheno.bucket}"
         },
         { name = "ENVIRONMENT"
           value = "FARGATE"

@@ -5,6 +5,15 @@ sys.path.append('./src/')
 import os
 import glob
 import boto3
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
+logger = logging.getLogger()
 
 s3 = boto3.client("s3")
 
@@ -420,6 +429,8 @@ def run_endopheno(input_directory, output_directory):
 
 # added for better readability while dockerizing application
 if __name__ == "__main__":
+    logger.info("Initiating Endopheno Classification")
+
     base_directory = os.path.dirname(os.path.dirname(__file__))
 
     input_directory = os.getenv('INPUT_DIR', os.path.join(base_directory, 'data/input/'))
@@ -431,15 +442,22 @@ if __name__ == "__main__":
     environment = os.getenv('ENVIRONMENT', 'LOCAL').upper()
 
     if environment == 'FARGATE':
+        
         s3_bucket = os.getenv('S3_BUCKET_ARN')
-
+        
         s3_input_prefix = os.getenv('S3_INPUT_PREFIX', 'input/')
         s3_output_prefix = os.getenv('S3_OUTPUT_PREFIX', 'output/')
 
         # s3.download_file(s3_bucket, 'input/input_data.csv', os.path.join(input_directory, 'input_data.csv'))
+        logger.info(f"Downloading files from s3://{s3_bucket}/input/ to {input_directory}")
         download_from_s3(s3_bucket, s3_input_prefix, input_directory)
+
         run_endopheno(input_directory, output_directory)
+
+        logger.info(f"Uploading files from {output_directory} to s3://{s3_bucket}/output/")
         upload_to_s3(s3_bucket, output_directory, s3_output_prefix)
 
     elif environment == 'LOCAL':
         run_endopheno(input_directory, output_directory)
+    
+    logger.info("Successfully Completed Endopheno Classification")
