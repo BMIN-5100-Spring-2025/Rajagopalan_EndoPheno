@@ -112,6 +112,7 @@ resource "aws_ecs_task_definition" "rajagopalan-endopheno" {
           awslogs-region        = data.aws_region.current_region.name
           awslogs-stream-prefix = "ecs"
         }
+      }
     }
   ])
 
