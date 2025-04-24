@@ -22,12 +22,14 @@ s3 = boto3.client("s3")
 def download_from_s3(bucket_name, s3_prefix, local_directory):
     """download files from S3 to a local directory"""
     response = s3.list_objects_v2(Bucket=bucket_name, Prefix=s3_prefix)
+    logger.info(response)
     if "Contents" not in response:
         return
 
     for obj in response["Contents"]:
+        logger.info(obj)
         key = obj["Key"]
-        local_filename = os.path.join(input_directory, os.path.basename(key))
+        local_filename = os.path.join(local_directory, os.path.basename(key))
         s3.download_file(bucket_name, key, local_filename)
 
 def upload_to_s3(bucket_name, s3_prefix, local_directory):
@@ -318,7 +320,7 @@ DEFRULE_ONLY_ENDOMETRIOSIS_EXCLUSION = """
 env.build(DEFRULE_ONLY_ENDOMETRIOSIS_EXCLUSION)
 
 def run_endopheno(input_directory, output_directory):
-    csv_files = glob.glob(os.path.join(input_directory, '*.csv'), recursive=False)
+    csv_files = glob.glob(os.path.join(input_directory, '*'), recursive=False)
 
     # iterate through all input files, running endopheno system on each one and create one output file for every input
     for input_file in csv_files:

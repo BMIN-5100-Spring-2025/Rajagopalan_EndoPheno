@@ -136,7 +136,7 @@ resource "aws_ecs_task_definition" "rajagopalan-endopheno" {
   container_definitions = jsonencode([
     {
       name      = "rajagopalan-endopheno"
-      image     = "${aws_ecr_repository.rajagopalan-endopheno.repository_url}:v14"
+      image     = "${aws_ecr_repository.rajagopalan-endopheno.repository_url}:v15"
       essential = true
       environment = [
         {
