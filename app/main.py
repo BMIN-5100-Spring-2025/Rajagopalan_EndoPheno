@@ -30,11 +30,12 @@ def download_from_s3(bucket_name, s3_prefix, local_directory):
         local_filename = os.path.join(input_directory, os.path.basename(key))
         s3.download_file(bucket_name, key, local_filename)
 
-def upload_to_s3(bucket_name, local_directory, s3_prefix):
+def upload_to_s3(bucket_name, s3_prefix, local_directory):
     """upload files from a local directory to S3"""
     for filename in os.listdir(local_directory):
+        logger.info(f"Uploading {filename} to s3://{bucket_name}/{s3_prefix}/{filename}")
         local_path = os.path.join(local_directory, filename)
-        s3_key = f"{s3_prefix}{filename}"
+        s3_key = f"{s3_prefix}/{filename}"
         s3.upload_file(local_path, bucket_name, s3_key)
 
 def count_symptoms(*args):
@@ -423,9 +424,9 @@ if __name__ == "__main__":
     session_id = os.getenv('SESSION_ID')
     logger.info(f"session: {session_id}")
 
-    parameters = os.getenv('PARAMETERS')
-    parameters = json.loads(base64.b64decode(parameters).decode('utf-8')) if parameters else None
-    logger.info(f"parameters: {parameters}")
+    # parameters = os.getenv('PARAMETERS')
+    # parameters = json.loads(base64.b64decode(parameters).decode('utf-8')) if parameters else None
+    # logger.info(f"parameters: {parameters}")
 
     input_directory = os.getenv('INPUT_DIR', os.path.join(base_directory, 'data/input/'))
     output_directory = os.getenv('OUTPUT_DIR', os.path.join(base_directory, 'data/output/'))
@@ -435,7 +436,7 @@ if __name__ == "__main__":
 
     environment = os.getenv('ENVIRONMENT', 'LOCAL').upper()
 
-    prefix = f"{session_id}/" if session_id else ""
+    prefix = f"{session_id}" if session_id else ""
 
 
     if environment == 'FARGATE':
@@ -446,12 +447,12 @@ if __name__ == "__main__":
         s3_output_prefix = os.getenv('S3_OUTPUT_PREFIX', 'output/')
 
         logger.info(f"Downloading files from s3://{s3_bucket}/{prefix}input/ to {input_directory}")
-        download_from_s3(s3_bucket, f"{prefix}input/", input_directory)
+        download_from_s3(s3_bucket, f"{prefix}/input/", input_directory)
 
         run_endopheno(input_directory, output_directory)
 
-        logger.info(f"Uploading files from {output_directory} to s3://{s3_bucket}/{prefix}output/")
-        upload_to_s3(s3_bucket, f"{prefix}output/", output_directory)
+        logger.info(f"Uploading files from {output_directory} to s3://{s3_bucket}/{prefix}/output/")
+        upload_to_s3(s3_bucket, f"{prefix}/output/", output_directory)
 
     elif environment == 'LOCAL':
         run_endopheno(input_directory, output_directory)

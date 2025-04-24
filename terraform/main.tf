@@ -136,7 +136,7 @@ resource "aws_ecs_task_definition" "rajagopalan-endopheno" {
   container_definitions = jsonencode([
     {
       name      = "rajagopalan-endopheno"
-      image     = "${aws_ecr_repository.rajagopalan-endopheno.repository_url}:v5"
+      image     = "${aws_ecr_repository.rajagopalan-endopheno.repository_url}:v14"
       essential = true
       environment = [
         {
@@ -176,7 +176,7 @@ resource "aws_s3_bucket_cors_configuration" "rajagopalan_endopheno_cors_configur
 }
 
 locals {
-  ecs_task_definition_container_name = "endopheno-project-container"
+  ecs_task_definition_container_name = "rajagopalan-endopheno"
 }
 
 module "invoke_fargate_lambda" {
