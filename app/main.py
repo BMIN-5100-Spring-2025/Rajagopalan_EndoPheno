@@ -37,7 +37,7 @@ def upload_to_s3(bucket_name, s3_prefix, local_directory):
     for filename in os.listdir(local_directory):
         logger.info(f"Uploading {filename} to s3://{bucket_name}/{s3_prefix}/{filename}")
         local_path = os.path.join(local_directory, filename)
-        s3_key = f"{s3_prefix}/{filename}"
+        s3_key = os.path.join(s3_prefix,filename)
         s3.upload_file(local_path, bucket_name, s3_key)
 
 def count_symptoms(*args):
